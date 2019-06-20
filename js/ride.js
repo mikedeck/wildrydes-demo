@@ -2,7 +2,8 @@
 
 var WildRydes = window.WildRydes || {};
 WildRydes.map = WildRydes.map || {};
-
+var pickup ;
+var drop;
 (function rideScopeWrapper($) {
     var authToken;
     WildRydes.authToken.then(function setAuthToken(token) {
@@ -16,6 +17,7 @@ WildRydes.map = WildRydes.map || {};
         window.location.href = '/signin.html';
     });
     function requestUnicorn(pickupLocation) {
+        pickup = pickupLocation.latitude+","+ pickupLocation.longitude;
         $.ajax({
             method: 'POST',
             url: _config.api.invokeUrl + '/ride',
@@ -37,11 +39,12 @@ WildRydes.map = WildRydes.map || {};
             }
         });
     }
+    
 
     function completeRequest(result) {
         var unicorn;
         var pronoun;
-        console.log('Response received from API: ', result);
+        //console.log('Response received from API: ', result);
         unicorn = result.Unicorn;
         pronoun = unicorn.Gender === 'Male' ? 'his' : 'her';
         displayUpdate(unicorn.Name + ', your ' + unicorn.Color + ' unicorn, is on ' + pronoun + ' way.');
@@ -50,12 +53,21 @@ WildRydes.map = WildRydes.map || {};
             WildRydes.map.unsetLocation();
             $('#request').prop('disabled', 'disabled');
             $('#request').text('Set Pickup');
+           // $('#request1').removeProp('disabled');
+            document.getElementById("request1").disabled = false;
+          //  $('#request1').text('Click to View Route');
         });
     }
 
     // Register click handler for #request button
     $(function onDocReady() {
         $('#request').click(handleRequestClick);
+        $('#request1').click(handleRequestClick1);
+        $('#signOut').click(function() {
+            WildRydes.signOut();
+            alert("You have been signed out.");
+            window.location = "signin.html";
+        });
         $(WildRydes.map).on('pickupChange', handlePickupChanged);
 
         WildRydes.authToken.then(function updateAuthMessage(token) {
@@ -71,15 +83,46 @@ WildRydes.map = WildRydes.map || {};
     });
 
     function handlePickupChanged() {
+      // alert("Coming to me ");
         var requestButton = $('#request');
+        var requestButton1 = $('#request1');
         requestButton.text('Request Unicorn');
         requestButton.prop('disabled', false);
+        $("button").click(function(){
+            //alert(this.id);
+            if( this.id == 'request1' ) {
+                requestButton1.text('View Route');
+                requestButton1.prop('disabled', false);
+               // requestButton1.prop('id', 'viewrouteform');
+               // requestButton1.prop('onclick', 'handleviewroute');
+                requestButton.prop('disabled', 'disabled');
+            }
+            else if(this.id == 'request')
+            {
+                requestButton.text('Request Unicorn');
+                requestButton.prop('disabled', false);
+                requestButton1.text('Set Drop');
+                requestButton1.prop('disabled', 'disabled');
+            }
+           
+            else{
+                requestButton.prop('disabled', 'disabled');
+                requestButton1.prop('disabled', 'disabled');
+                alert("waiting for event");
+            }
+        });    
+
+
+       //var requestButton1 = $('#request1');
+      // requestButton1.text('View Route');
+      // requestButton1.prop('disabled', false);
     }
 
     function handleRequestClick(event) {
         var pickupLocation = WildRydes.map.selectedPoint;
         event.preventDefault();
         requestUnicorn(pickupLocation);
+       // requestUnicorn1(pickupLocation);
     }
 
     function animateArrival(callback) {
@@ -104,4 +147,61 @@ WildRydes.map = WildRydes.map || {};
     function displayUpdate(text) {
         $('#updates').append($('<li>' + text + '</li>'));
     }
+
+    function requestUnicorn1(pickupLocation) {
+        drop = pickupLocation.latitude+","+ pickupLocation.longitude;
+        handleViewRoute();
+     }
+
+     function handleRequestClick1(event) {
+        var pickupLocation = WildRydes.map.selectedPoint;
+        event.preventDefault();
+        requestUnicorn1(pickupLocation);
+    }
+
+    function handleViewRoute(event) {
+     
+
+        
+        var waypoint0 = pickup;
+        var waypoint1 = drop;
+		var mode = "fastest;car;traffic:enabled";
+        var departure = "now";
+        
+      	
+     
+        $('#sec1').css("display","none");
+		$.ajax({
+		url:'',  //https://xdere345g.dsfs34-api.us-east-2.amazonaws.com/Prod/routing
+		  type: 'GET',
+		  dataType: 'jsonp',
+		  jsonp: 'jsoncallback',
+		  data: {
+				waypoint0: waypoint0,
+				waypoint1: waypoint1,
+				mode: mode,
+				departure: departure,
+				routeattributes : 'waypoints,summary,shape,legs'
+			  },
+		  success: function (data) {
+					$('#main').css("display","none");
+					//alert("received response");
+					if(data.response.route[0]!=null)
+					{
+					 var route = data.response.route[0];
+					 addRouteShapeToMap(route);
+					 addManueversToMap(route);
+					}
+					else{
+						alert("Response Error");
+					}
+					 //addWaypointsToPanel(route.waypoint);
+					 //addManueversToPanel(route);
+					 //addSummaryToPanel(route.summary);
+			
+				}
+			});
+    }
+
+
 }(jQuery));
